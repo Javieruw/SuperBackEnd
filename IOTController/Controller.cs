@@ -11,7 +11,7 @@ namespace IOTController
         private TcpListener listener;
         private TcpClient client;
         private NetworkStream stream;
-        private readonly int port = 8080;
+        private readonly int port = 50000;
 
         public Controller()
         {
