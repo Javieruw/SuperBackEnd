@@ -66,7 +66,19 @@ namespace IOTController
             await SendMessageAsync(message);
         }
         
-        public async Task<bool> GetWindowStatus(int GreenHouseId)
+        public class WindowStatusResult
+        {
+            public bool? IsWindowOpen { get; set; }
+            public string ErrorMessage { get; set; }
+
+            public WindowStatusResult(bool? isWindowOpen, string errorMessage = null)
+            {
+                IsWindowOpen = isWindowOpen;
+                ErrorMessage = errorMessage;
+            }
+        }
+
+        public async Task<WindowStatusResult> GetWindowStatus(int GreenHouseId)
         {
             string message = $"REQ,{GreenHouseId},GET,SER";
             await SendMessageAsync(message);
@@ -76,14 +88,14 @@ namespace IOTController
 
             // Log the received response for debugging purposes
             Console.WriteLine("Received: " + response);
-            
+    
             // Split and check the response format
             string[] parts = response.Split(',');
-            
+    
             if (parts.Length < 5)  // Check if all expected parts are present
             {
                 Console.WriteLine("Received malformed response: " + response);
-                throw new InvalidOperationException("Received malformed response.");
+                return new WindowStatusResult(null, "Received malformed response.");
             }
 
             // Specific position checks for robustness
@@ -91,17 +103,18 @@ namespace IOTController
             {
                 if (parts[4] == "180") // Assuming "180" means open
                 {
-                    return true; // Window is open
+                    return new WindowStatusResult(true); // Window is open
                 }
                 if (parts[4] == "0") // Assuming "0" means closed
                 {
-                    return false; // Window is closed
+                    return new WindowStatusResult(false); // Window is closed
                 }
             }
 
             Console.WriteLine("Received unexpected status: " + parts[4]);
-            throw new InvalidOperationException("Invalid status value received.");
+            return new WindowStatusResult(null, $"Invalid status value received: {parts[4]}.");
         }
+
 
 
         private async Task SendMessageAsync(string message)
@@ -151,8 +164,18 @@ namespace IOTController
                         await server.CloseWindow(id);
                         break;
                     case "status":
-                        bool isOpen = await server.GetWindowStatus(id);
-                        Console.WriteLine($"Window status for Greenhouse {id}: {(isOpen ? "Open" : "Closed")}");
+                        var statusResult = await server.GetWindowStatus(id);
+                        if (statusResult.ErrorMessage != null)
+                        {
+                            Console.WriteLine($"Error retrieving window status for Greenhouse {id}: {statusResult.ErrorMessage}");
+                        }
+                        else
+                        {
+                            string statusDescription = statusResult.IsWindowOpen.HasValue
+                                ? (statusResult.IsWindowOpen.Value ? "Open" : "Closed")
+                                : "Status not determined";
+                            Console.WriteLine($"Window status for Greenhouse {id}: {statusDescription}");
+                        }
                         break;
                     case "set":
                         if (parts.Length != 3)
