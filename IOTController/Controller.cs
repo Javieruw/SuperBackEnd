@@ -121,7 +121,7 @@ namespace IOTController
         public static async Task Main(string[] args)
         {
             Controller server = new Controller();
-            Console.WriteLine("Server is running. Type 'open', 'close', or 'status' followed by the greenhouse ID to control:");
+            Console.WriteLine("Server is running. Type 'open', 'close', 'status', or 'set [id] [angle]' followed by the greenhouse ID and optionally an angle to control:");
 
             while (true)
             {
@@ -129,9 +129,9 @@ namespace IOTController
                 if (string.IsNullOrEmpty(input)) continue;
 
                 string[] parts = input.Split();
-                if (parts.Length != 2)
+                if (parts.Length < 2)
                 {
-                    Console.WriteLine("Invalid command. Please use the format 'open [id]', 'close [id]', or 'status [id]'.");
+                    Console.WriteLine("Invalid command. Please use the format 'open [id]', 'close [id]', 'status [id]', or 'set [id] [angle]'.");
                     continue;
                 }
 
@@ -154,11 +154,31 @@ namespace IOTController
                         bool isOpen = await server.GetWindowStatus(id);
                         Console.WriteLine($"Window status for Greenhouse {id}: {(isOpen ? "Open" : "Closed")}");
                         break;
+                    case "set":
+                        if (parts.Length != 3)
+                        {
+                            Console.WriteLine("Invalid command. Use the format 'set [id] [angle]'.");
+                            continue;
+                        }
+                        if (!int.TryParse(parts[2], out int angle))
+                        {
+                            Console.WriteLine("Invalid angle. Please enter a valid number between 0 and 180.");
+                            continue;
+                        }
+                        await server.SetWindowAngle(id, angle);
+                        break;
                     default:
-                        Console.WriteLine("Unknown command. Use 'open', 'close', or 'status'.");
+                        Console.WriteLine("Unknown command. Use 'open', 'close', 'status', or 'set'.");
                         break;
                 }
             }
         }
+        public async Task SetWindowAngle(int GreenHouseId, int angle)
+        {
+            string message = $"REQ,{GreenHouseId},SET,SER,{angle}";
+            await SendMessageAsync(message);
+        }
+
+
     }
 }
